@@ -37,7 +37,12 @@ pub fn a_sharp() -> Result<(), portaudio::Error> {
     let sq2 = square(550.0).amp(0.5).dur(0.15);
     let sq3 = square(660.0).amp(0.5).dur(0.15);
     let sl = silence(0.1);
-    let mix = sq.clone().mix(0.5, sq2.clone()).mix(0.66, sq3.clone());
+    let mix = square(440.0)
+        .amp(1.0)
+        .dur(0.30)
+        .mix(0.5, square(550.0).amp(1.0).dur(0.30))
+        .mix(0.66, square(660.0).amp(1.0).dur(0.30));
+
     // let down = square(440.0).linear_amp(1.0, 0.0).dur(0.25);
     // let up = square(440.0).linear_amp(0.0, 1.0).dur(0.25);
 
