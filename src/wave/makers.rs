@@ -1,6 +1,7 @@
 use super::shape::*;
 use super::Time;
 
+#[derive(Clone)]
 pub struct FuncBuilder {
     shape: Shape,
     fq_data: f64,

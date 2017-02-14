@@ -1,6 +1,8 @@
 extern crate mule_audio as ma;
+use ma::mocks;
 
 fn main() {
     println!("HELLO WORLD!");
-    ma::a_sharp().unwrap();
+    mocks::sine_chord().unwrap();
+    mocks::saw_chord().unwrap();
 }
