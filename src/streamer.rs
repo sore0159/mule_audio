@@ -118,6 +118,10 @@ impl Streamer {
 }
 
 
+// Timer exists to prevent division rounding errors in DT
+// from compounding over time.  It uses an iteger cycle of
+// the samples in a second and manually increments the second
+// after every cycle.  Is this neccissary?  =/
 pub struct Timer {
     i: Cycle<Range<usize>>,
     seconds: f64,

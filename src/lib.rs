@@ -1,9 +1,8 @@
 extern crate portaudio;
 
 pub mod wave;
-pub mod player;
 pub mod streamer;
-pub mod mocks;
+pub mod trials;
 
 
 #[cfg(test)]

@@ -1,17 +1,68 @@
 use super::*;
 
-#[derive(Clone)]
-pub struct Func {
+#[derive(Clone, Copy)]
+pub struct Waver {
     pub timer: TimeAdjust,
+    pub behavior: Behavior,
+}
+
+impl Waver {
+    pub fn new_silence(dur: Time) -> Waver {
+        Waver {
+            timer: TimeAdjust::new(),
+            behavior: Behavior::Silence(Silence::new(dur)),
+        }
+    }
+    pub fn new_noise(noise: Noise) -> Waver {
+        Waver {
+            timer: TimeAdjust::new(),
+            behavior: Behavior::Noise(noise),
+        }
+    }
+}
+
+impl Wave for Waver {
+    fn val(&mut self, t: Time) -> Option<f32> {
+        let dt = self.timer.dt(t);
+        match self.behavior {
+            Behavior::Noise(ref mut x) => x.val(dt),
+            Behavior::Silence(ref mut x) => x.val(dt),
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct TimeAdjust(Option<Time>);
+
+impl TimeAdjust {
+    pub fn new() -> Self {
+        TimeAdjust(None)
+    }
+    pub fn dt(&mut self, t: Time) -> Time {
+        if let Some(start) = self.0 {
+            return t - start;
+        }
+        self.0 = Some(t);
+        0.0
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum Behavior {
+    Noise(Noise),
+    Silence(Silence),
+}
+
+#[derive(Clone, Copy)]
+pub struct Noise {
     pub shape: Shape,
     pub amp: Flow,
     pub fq: Flow,
 }
 
-impl Func {
+impl Noise {
     pub fn new(shape: Shape, amp: Flow, fq: Flow) -> Self {
-        Func {
-            timer: TimeAdjust::new(),
+        Noise {
             shape: shape,
             amp: amp,
             fq: fq,
@@ -19,9 +70,8 @@ impl Func {
     }
 }
 
-impl Wave for Func {
-    fn val(&mut self, t: Time) -> Option<f32> {
-        let dt = self.timer.dt(t);
+impl Wave for Noise {
+    fn val(&mut self, dt: Time) -> Option<f32> {
         let (amp_maybe, fq_maybe) = (self.amp.val(dt), self.fq.val(dt));
         if let Some(amp) = amp_maybe {
             if let Some(fq) = fq_maybe {
@@ -32,34 +82,30 @@ impl Wave for Func {
     }
 }
 
-#[derive(Clone)]
-pub struct Silence {
-    pub timer: TimeAdjust,
-    pub duration: Time,
+#[derive(Clone, Copy)]
+pub enum Shape {
+    Sine,
+    Saw,
+    Square,
 }
-
-impl Silence {
-    pub fn new(dur: Time) -> Self {
-        Silence {
-            timer: TimeAdjust::new(),
-            duration: dur,
+impl Shape {
+    pub fn val(&self, amp: Amp, fq: Frequency, time: Time) -> f32 {
+        match self {
+            &Shape::Sine => (amp * (time * fq * TAU).sin()) as f32,
+            &Shape::Saw => (2.0 * amp * ((0.5 + time) * fq).fract() - 1.0) as f32,
+            &Shape::Square => {
+                if (time * fq).fract() < 0.5 {
+                    amp as f32
+                } else {
+                    -1.0 * amp as f32
+                }
+            }
         }
     }
 }
 
 
-impl Wave for Silence {
-    fn val(&mut self, t: Time) -> Option<f32> {
-        let dt = self.timer.dt(t);
-        if dt < 0.0 || dt > self.duration {
-            None
-        } else {
-            Some(0.0)
-        }
-    }
-}
-
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum Flow {
     Hold(f64, Option<Time>),
     Linear(f64, f64, Time),
@@ -92,40 +138,24 @@ impl Flow {
     }
 }
 
-#[derive(Clone)]
-pub enum Shape {
-    Sine,
-    Saw,
-    Square,
+#[derive(Clone, Copy)]
+pub struct Silence {
+    pub duration: Time,
 }
-impl Shape {
-    pub fn val(&self, amp: Amp, fq: Frequency, time: Time) -> f32 {
-        match self {
-            &Shape::Sine => (amp * (time * fq * TAU).sin()) as f32,
-            &Shape::Saw => (2.0 * amp * ((0.5 + time) * fq).fract() - 1.0) as f32,
-            &Shape::Square => {
-                if (time * fq).fract() < 0.5 {
-                    amp as f32
-                } else {
-                    -1.0 * amp as f32
-                }
-            }
-        }
+
+impl Silence {
+    pub fn new(dur: Time) -> Self {
+        Silence { duration: dur }
     }
 }
 
-#[derive(Clone)]
-pub struct TimeAdjust(Option<Time>);
 
-impl TimeAdjust {
-    pub fn new() -> Self {
-        TimeAdjust(None)
-    }
-    pub fn dt(&mut self, t: Time) -> Time {
-        if let Some(start) = self.0 {
-            return t - start;
+impl Wave for Silence {
+    fn val(&mut self, dt: Time) -> Option<f32> {
+        if dt < 0.0 || dt > self.duration {
+            None
+        } else {
+            Some(0.0)
         }
-        self.0 = Some(t);
-        0.0
     }
 }
