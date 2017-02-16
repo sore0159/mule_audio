@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct Waver {
     pub timer: TimeAdjust,
     pub behavior: Behavior,
@@ -47,38 +47,74 @@ impl TimeAdjust {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub enum Behavior {
     Noise(Noise),
     Silence(Silence),
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct Noise {
     pub shape: Shape,
-    pub amp: Flow,
-    pub fq: Flow,
+    pub stats: Vec<(f64, f64, f64)>, // amp, fq, t_end
+    pub current_stats: usize,
 }
 
 impl Noise {
-    pub fn new(shape: Shape, amp: Flow, fq: Flow) -> Self {
+    pub fn new(shape: Shape, fq: f64) -> Self {
         Noise {
             shape: shape,
-            amp: amp,
-            fq: fq,
+            stats: vec![(0.0, fq, 0.0)],
+            current_stats: 0,
+        }
+    }
+    pub fn sine(fq: f64) -> Self {
+        Noise::new(Shape::Sine, fq)
+    }
+    pub fn square(fq: f64) -> Self {
+        Noise::new(Shape::Square, fq)
+    }
+    pub fn saw(fq: f64) -> Self {
+        Noise::new(Shape::Saw, fq)
+    }
+    pub fn push_stats(&mut self, amp: f64, fq: f64, dur: f64) {
+        self.stats.push((amp, fq, dur));
+    }
+    pub fn reset(&mut self) {
+        self.current_stats = 0;
+    }
+    pub fn dur(&self) -> f64 {
+        if let Some(d) = self.stats.last() {
+            d.2
+        } else {
+            0.0
         }
     }
 }
 
 impl Wave for Noise {
     fn val(&mut self, dt: Time) -> Option<f32> {
-        let (amp_maybe, fq_maybe) = (self.amp.val(dt), self.fq.val(dt));
-        if let Some(amp) = amp_maybe {
-            if let Some(fq) = fq_maybe {
-                return Some(self.shape.val(amp, fq, dt));
+        let (amp, fq) = if let Some(&(amp1, fq1, dur1)) = self.stats.get(self.current_stats) {
+            if let Some(&(amp2, fq2, dur2)) = self.stats.get(self.current_stats.wrapping_add(1)) {
+                if dt > dur2 {
+                    self.current_stats += 1;
+                    return self.val(dt);
+                }
+                let prog = (dt - dur1) / (dur2 - dur1);
+                let amp = amp1 + (amp2 - amp1) * prog;
+                let fq = fq1 + (fq2 - fq1) * prog;
+                (amp, fq)
+            } else {
+                return None;
             }
+        } else {
+            return None;
+        };
+        match self.shape {
+            x @ Shape::Sine => Some(x.val(amp, fq, dt)),
+            x @ Shape::Square => Some(x.val(amp, fq, dt)),
+            x @ Shape::Saw => Some(x.val(amp, fq, dt)),
         }
-        None
     }
 }
 
@@ -98,40 +134,6 @@ impl Shape {
                     amp as f32
                 } else {
                     -1.0 * amp as f32
-                }
-            }
-        }
-    }
-}
-
-
-#[derive(Clone, Copy)]
-pub enum Flow {
-    Hold(f64, Option<Time>),
-    Linear(f64, f64, Time),
-}
-
-impl Flow {
-    pub fn new_hold(val: f64, dur: Option<Time>) -> Flow {
-        Flow::Hold(val, dur)
-    }
-    pub fn new_linear(start: f64, stop: f64, dur: Time) -> Flow {
-        Flow::Linear(start, (stop - start) / dur, dur)
-    }
-    pub fn val(&self, t: Time) -> Option<f64> {
-        match self {
-            &Flow::Hold(x, dur_maybe) => {
-                if let Some(dur) = dur_maybe {
-                    if t >= 0.0 && t <= dur { Some(x) } else { None }
-                } else {
-                    Some(x)
-                }
-            }
-            &Flow::Linear(start, slope, dur) => {
-                if t >= 0.0 && t <= dur {
-                    Some(start + slope * t)
-                } else {
-                    None
                 }
             }
         }
