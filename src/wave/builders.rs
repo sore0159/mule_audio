@@ -2,6 +2,7 @@
 use wave::voices::Voice;
 use wave::shape::{Shape, Waver, Noise};
 
+#[derive(Clone)]
 pub struct VoiceBuilder {
     pub cur_shape: Shape,
     pub cur_fq: f64,
