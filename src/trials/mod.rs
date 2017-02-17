@@ -3,6 +3,9 @@ use streamer::Streamer;
 use wave::{Mix, VoiceBuilder};
 use notes;
 
+pub mod conc_trials;
+pub use self::conc_trials::*;
+
 pub fn trial1() -> Result<(), pa::Error> {
     let mut streamer = Streamer::new()?;
     let mut mix = Mix::new(6);

@@ -4,5 +4,5 @@ use ma::trials;
 
 fn main() {
     println!("HELLO WORLD!");
-    trials::trial2().unwrap();
+    trials::c_trial1().unwrap();
 }

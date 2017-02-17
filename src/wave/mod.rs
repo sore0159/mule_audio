@@ -3,10 +3,12 @@ use std;
 pub mod shape;
 pub mod voices;
 pub mod builders;
+pub mod mix;
 
 pub use self::builders::VoiceBuilder;
 pub use self::shape::{Waver, Silence, Shape};
-pub use self::voices::{Voice, Mix};
+pub use self::voices::Voice;
+pub use self::mix::{Mix, SafeMix, SafeVoice, VoiceState};
 
 pub type Frequency = f64;
 pub type Amp = f64;
