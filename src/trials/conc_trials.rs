@@ -6,9 +6,9 @@ use std::{time, thread};
 
 pub fn c_trial1() -> Result<(), pa::Error> {
     let mut streamer = Streamer::new()?;
-    let (mix, v_send, done_send) = SafeMix::new(6);
+    let (mix, v_send, mod_send, done_send) = SafeMix::new(6);
     let v1 = VoiceBuilder::sine(notes::A4).linear_amp(0.1, 0.5).hold(2.0).fade(0.1);
-    let v2 = VoiceBuilder::sine(notes::C4).linear_amp(0.1, 0.5).hold(2.0).fade(0.1);
+    let v2 = VoiceBuilder::sine(notes::CS4).linear_amp(0.1, 0.5).hold(2.0).fade(0.1);
     streamer.set_stream(mix)?;
     streamer.start()?;
     println!("Starting stream");
@@ -27,6 +27,9 @@ pub fn c_trial1() -> Result<(), pa::Error> {
                     if tic == 4 {
                         println!("Starting voice 2!");
                         v_send.send(v2.clone().into()).unwrap();
+                    } else if tic == 8 {
+                        println!("Sending stop signal for id {}", x);
+                        // stop_send.send(x).unwrap();
                     }
                 }
                 VoiceState::Failed => {

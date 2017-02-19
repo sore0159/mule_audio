@@ -19,6 +19,10 @@ impl Waver {
             behavior: Behavior::Noise(noise),
         }
     }
+    pub fn modify(&mut self, t: Time, new_noise: Noise) {
+
+        let dt = self.timer.dt(t);
+    }
 }
 
 impl Wave for Waver {
@@ -89,6 +93,22 @@ impl Noise {
         } else {
             0.0
         }
+    }
+    // This will be called mid-play, so new_stats must pre-allocate the first
+    // spot, and the second spot's time must be transition time.
+    pub fn swap(&mut self, now: Time, mut new_noise: Noise) {
+        if let Some(stats) = self.stats.get(self.current_stats) {
+            if new_stats.len() > 0 {
+                new_stats[0] = stats.clone();
+                new_stats[0].2 -= now;
+            }
+        } else if new_stats.len() > 1 {
+            new_stats[0] = new_stats[1].clone();
+        }
+        for stat in &mut new_stats {
+            stat.2 += now;
+        }
+        self.stats = new_stats;
     }
 }
 

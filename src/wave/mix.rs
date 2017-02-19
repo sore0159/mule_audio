@@ -77,10 +77,13 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{RwLock, Arc};
 use std::thread;
 
+use wave::shape::Noise;
+
 pub struct SafeMix {
     capacity: f32,
     data: Vec<Option<SafeVoice>>,
     voice_rc: Receiver<SafeVoice>,
+    mod_rc: Receiver<(Noise, u64)>,
     state_modder: Sender<(Arc<RwLock<VoiceState>>, VoiceState)>,
     terminator: Receiver<()>,
 }
@@ -106,13 +109,14 @@ impl From<VoiceBuilder> for SafeVoice {
 }
 
 impl SafeMix {
-    pub fn new(capacity: usize) -> (Self, Sender<SafeVoice>, Sender<()>) {
+    pub fn new(capacity: usize) -> (Self, Sender<SafeVoice>, Sender<(Noise, u64)>, Sender<()>) {
         let mut v = Vec::with_capacity(capacity);
         for _ in 0..capacity {
             v.push(None);
         }
         let (voice_sd, voice_rc) = channel();
         let (done_sd, done_rc) = channel();
+        let (mod_sd, mod_rc) = channel();
         let (state_sd, state_rc) = channel::<(Arc<RwLock<VoiceState>>, VoiceState)>();
         thread::spawn(move || {
             let mut id_count: u64 = 0;
@@ -151,20 +155,35 @@ impl Wave for SafeMix {
         if let Ok(_) = self.terminator.try_recv() {
             return None;
         }
-        let mut new_voice = if let Ok(v) = self.voice_rc.try_recv() {
-            Some(v)
+        let (mut new_voice, mut replace_id) = if let Ok(v) = self.voice_rc.try_recv() {
+            (Some(v.0), v.1)
         } else {
-            None
+            (None, None)
         };
         for vd_maybe in &mut self.data {
-            let mut flag = false;
-            if let &mut Some(SafeVoice(ref mut v, _)) = vd_maybe {
-                if let Some(x) = v.val(dt) {
-                    sum += x;
-                } else {
-                    flag = true;
+            let mut done_flag = false;
+            let mut swap_flag = false;
+            if let &mut Some(SafeVoice(ref mut v, ref mut v_status)) = vd_maybe {
+                if let Some(id) = replace_id {
+                    if let Ok(r) = v_status.try_read() {
+                        match *r {
+                            VoiceState::Active(x) => {
+                                if x == id {
+                                    swap_flag = true;
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
                 }
-            } else {
+                if !swap_flag {
+                    if let Some(x) = v.val(dt) {
+                        sum += x;
+                    } else {
+                        done_flag = true;
+                    }
+                }
+            } else if replace_id.is_none() {
                 if let Some(new_vd) = new_voice.take() {
                     needs_id = Some(new_vd.1.clone());
                     *vd_maybe = Some(new_vd);
@@ -172,7 +191,10 @@ impl Wave for SafeMix {
                     continue;
                 }
             }
-            if flag {
+            if swap_flag {
+                replace_id = None;
+                *vd_maybe = new_voice.take()
+            } else if done_flag {
                 if let Some(vd) = vd_maybe.take() {
                     self.state_modder.send((vd.1, VoiceState::Done)).unwrap();
                 }
