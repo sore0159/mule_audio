@@ -19,9 +19,22 @@ impl Waver {
             behavior: Behavior::Noise(noise),
         }
     }
-    pub fn modify(&mut self, t: Time, new_noise: Noise) {
-
+    pub fn swap(&mut self, t: Time, mut new_noise: Noise) {
         let dt = self.timer.dt(t);
+        if let Behavior::Noise(ref mut x) = self.behavior {
+            x.swap(dt, new_noise);
+            return;
+        }
+        if new_noise.stats.len() > 1 {
+            let mut st = new_noise.stats[1].clone();
+            st.0 = 0.0;
+            st.2 = 0.0;
+            new_noise.stats[0] = st
+        }
+        for stat in &mut new_noise.stats {
+            stat.2 += dt;
+        }
+        self.behavior = Behavior::Noise(new_noise);
     }
 }
 
@@ -57,7 +70,7 @@ pub enum Behavior {
     Silence(Silence),
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Noise {
     pub shape: Shape,
     pub stats: Vec<(f64, f64, f64)>, // amp, fq, t_end
@@ -97,48 +110,55 @@ impl Noise {
     // This will be called mid-play, so new_stats must pre-allocate the first
     // spot, and the second spot's time must be transition time.
     pub fn swap(&mut self, now: Time, mut new_noise: Noise) {
-        if let Some(stats) = self.stats.get(self.current_stats) {
-            if new_stats.len() > 0 {
-                new_stats[0] = stats.clone();
-                new_stats[0].2 -= now;
+        if let Some(snapshot) = self.calc_stats(now) {
+            if new_noise.stats.len() > 0 {
+                new_noise.stats[0] = (snapshot.0, snapshot.1, 0.0);
             }
-        } else if new_stats.len() > 1 {
-            new_stats[0] = new_stats[1].clone();
+        } else if new_noise.stats.len() > 1 {
+            new_noise.stats[0] = new_noise.stats[1].clone();
+            new_noise.stats[0].2 = 0.0;
         }
-        for stat in &mut new_stats {
+        for stat in &mut new_noise.stats {
             stat.2 += now;
         }
-        self.stats = new_stats;
+        *self = new_noise;
+    }
+    fn calc_stats(&mut self, dt: Time) -> Option<(f64, f64)> {
+        if let Some(&(amp1, fq1, dur1)) = self.stats.get(self.current_stats) {
+            if let Some(&(amp2, fq2, dur2)) = self.stats.get(self.current_stats.wrapping_add(1)) {
+                if dt > dur2 {
+                    self.current_stats += 1;
+                    return self.calc_stats(dt);
+                }
+                let prog = (dt - dur1) / (dur2 - dur1);
+                let amp = amp1 + (amp2 - amp1) * prog;
+                let fq = fq1 + (fq2 - fq1) * prog;
+                Some((amp, fq))
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+
     }
 }
 
 impl Wave for Noise {
     fn val(&mut self, dt: Time) -> Option<f32> {
-        let (amp, fq) = if let Some(&(amp1, fq1, dur1)) = self.stats.get(self.current_stats) {
-            if let Some(&(amp2, fq2, dur2)) = self.stats.get(self.current_stats.wrapping_add(1)) {
-                if dt > dur2 {
-                    self.current_stats += 1;
-                    return self.val(dt);
-                }
-                let prog = (dt - dur1) / (dur2 - dur1);
-                let amp = amp1 + (amp2 - amp1) * prog;
-                let fq = fq1 + (fq2 - fq1) * prog;
-                (amp, fq)
-            } else {
-                return None;
+        if let Some((amp, fq)) = self.calc_stats(dt) {
+            match self.shape {
+                x @ Shape::Sine => Some(x.val(amp, fq, dt)),
+                x @ Shape::Square => Some(x.val(amp, fq, dt)),
+                x @ Shape::Saw => Some(x.val(amp, fq, dt)),
             }
         } else {
-            return None;
-        };
-        match self.shape {
-            x @ Shape::Sine => Some(x.val(amp, fq, dt)),
-            x @ Shape::Square => Some(x.val(amp, fq, dt)),
-            x @ Shape::Saw => Some(x.val(amp, fq, dt)),
+            None
         }
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum Shape {
     Sine,
     Saw,

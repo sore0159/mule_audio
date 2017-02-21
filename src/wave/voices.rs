@@ -1,4 +1,4 @@
-use wave::shape::Waver;
+use wave::shape::{Noise, Waver};
 use wave::{Wave, Time};
 
 #[derive(Clone)]
@@ -7,6 +7,14 @@ pub struct Voice {
     data: Vec<Waver>,
 }
 
+impl Voice {
+    pub fn swap(&mut self, t: Time, new_noise: Noise) {
+        if let Some(w) = self.data.get_mut(self.current) {
+            w.swap(t, new_noise)
+        }
+        self.data.truncate(self.current + 1)
+    }
+}
 impl From<Vec<Waver>> for Voice {
     fn from(item: Vec<Waver>) -> Voice {
         Voice {

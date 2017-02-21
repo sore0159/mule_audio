@@ -1,6 +1,7 @@
 use portaudio as pa;
 use streamer::Streamer;
-use wave::{SafeMix, VoiceBuilder, VoiceState, SafeVoice};
+use wave::{Shape, SafeMix, VoiceBuilder, VoiceState, SafeVoice};
+use wave::shape::Noise;
 use notes;
 use std::{time, thread};
 
@@ -9,6 +10,8 @@ pub fn c_trial1() -> Result<(), pa::Error> {
     let (mix, v_send, mod_send, done_send) = SafeMix::new(6);
     let v1 = VoiceBuilder::sine(notes::A4).linear_amp(0.1, 0.5).hold(2.0).fade(0.1);
     let v2 = VoiceBuilder::sine(notes::CS4).linear_amp(0.1, 0.5).hold(2.0).fade(0.1);
+    let mut stop_noise = Noise::new(Shape::Sine, notes::A4);
+    stop_noise.push_stats(0.0, notes::A4, 0.05);
     streamer.set_stream(mix)?;
     streamer.start()?;
     println!("Starting stream");
@@ -28,7 +31,8 @@ pub fn c_trial1() -> Result<(), pa::Error> {
                         println!("Starting voice 2!");
                         v_send.send(v2.clone().into()).unwrap();
                     } else if tic == 8 {
-                        println!("Sending stop signal for id {}", x);
+                        println!("Sending switch signal for id {}", x);
+                        mod_send.send((stop_noise.clone(), x)).unwrap();
                         // stop_send.send(x).unwrap();
                     }
                 }
