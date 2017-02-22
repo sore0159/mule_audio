@@ -6,7 +6,9 @@ pub mod trials;
 pub mod notes;
 
 pub use streamer::Streamer;
-pub use wave::{Wave, Mix, VoiceBuilder};
+pub use wave::{Wave, Mix, SafeMix, Voice, VoiceBuilder};
+pub use wave::shape::Noise;
+pub use wave::mix::{SafeVoice, VoiceState, SafeState};
 
 
 #[cfg(test)]

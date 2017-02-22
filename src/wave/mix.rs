@@ -84,7 +84,7 @@ pub struct SafeMix {
     data: Vec<Option<SafeVoice>>,
     voice_rc: Receiver<SafeVoice>,
     mod_rc: Receiver<(Noise, u64)>,
-    state_modder: Sender<(Arc<RwLock<VoiceState>>, VoiceState)>,
+    state_modder: Sender<(SafeState, VoiceState)>,
     terminator: Receiver<()>,
 }
 pub enum VoiceState {
@@ -95,16 +95,25 @@ pub enum VoiceState {
 }
 
 
-pub struct SafeVoice(Voice, pub Arc<RwLock<VoiceState>>);
+#[derive(Clone)]
+pub struct SafeState(pub Arc<RwLock<VoiceState>>);
+
+impl From<VoiceState> for SafeState {
+    fn from(vs: VoiceState) -> Self {
+        SafeState(Arc::new(RwLock::new(vs)))
+    }
+}
+
+pub struct SafeVoice(Voice, pub SafeState);
 
 impl From<Voice> for SafeVoice {
     fn from(item: Voice) -> SafeVoice {
-        SafeVoice(item, Arc::new(RwLock::new(VoiceState::Pending)))
+        SafeVoice(item, VoiceState::Pending.into())
     }
 }
 impl From<VoiceBuilder> for SafeVoice {
     fn from(item: VoiceBuilder) -> SafeVoice {
-        SafeVoice(item.into(), Arc::new(RwLock::new(VoiceState::Pending)))
+        SafeVoice(item.into(), VoiceState::Pending.into())
     }
 }
 
@@ -117,12 +126,12 @@ impl SafeMix {
         let (voice_sd, voice_rc) = channel();
         let (done_sd, done_rc) = channel();
         let (mod_sd, mod_rc) = channel();
-        let (state_sd, state_rc) = channel::<(Arc<RwLock<VoiceState>>, VoiceState)>();
+        let (state_sd, state_rc) = channel::<(SafeState, VoiceState)>();
         thread::spawn(move || {
             let mut id_count: u64 = 0;
             loop {
                 if let Ok((data, state)) = state_rc.recv() {
-                    if let Ok(mut w) = data.write() {
+                    if let Ok(mut w) = data.0.write() {
                         match state {
                             VoiceState::Active(_) => {
                                 id_count += 1;
@@ -153,7 +162,7 @@ impl SafeMix {
 impl Wave for SafeMix {
     fn val(&mut self, dt: Time) -> Option<f32> {
         let mut sum = 0.0;
-        let mut needs_id: Option<Arc<RwLock<VoiceState>>> = None;
+        let mut needs_id: Option<SafeState> = None;
         if self.terminator.try_recv().is_ok() {
             return None;
         }
@@ -165,7 +174,7 @@ impl Wave for SafeMix {
             let mut swap_flag = false;
             if let &mut Some(SafeVoice(ref mut v, ref mut v_status)) = vd_maybe {
                 if let Some((_, id)) = swap_maybe {
-                    if let Ok(r) = v_status.try_read() {
+                    if let Ok(r) = v_status.0.try_read() {
                         match *r {
                             VoiceState::Active(x) => {
                                 if x == id {
@@ -197,7 +206,7 @@ impl Wave for SafeMix {
             }
         }
         if let Some(vs) = needs_id {
-            self.state_modder.send((vs, VoiceState::Active(0))).unwrap();
+            self.state_modder.send((vs, VoiceState::Active(0).into())).unwrap();
         } else if let Some(new_vd) = new_maybe {
             self.state_modder.send((new_vd.1, VoiceState::Failed)).unwrap();
         }
