@@ -1,9 +1,17 @@
-use portaudio as pa;
-use streamer::Streamer;
-use wave::{SafeMix, VoiceBuilder, VoiceState, SafeVoice};
-use wave::shape::Noise;
-use notes;
+extern crate mule_audio as ma;
+extern crate portaudio as pa;
+
+use ma::streamer::Streamer;
+use ma::wave::{SafeMix, VoiceBuilder, VoiceState, SafeVoice};
+use ma::wave::shape::Noise;
+use ma::notes;
+
 use std::{time, thread};
+
+fn main() {
+    println!("Simple voice trials!");
+    c_trial1().unwrap();
+}
 
 pub fn c_trial1() -> Result<(), pa::Error> {
     let mut streamer = Streamer::new()?;

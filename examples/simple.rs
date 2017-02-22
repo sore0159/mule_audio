@@ -1,10 +1,15 @@
-use portaudio as pa;
-use streamer::Streamer;
-use wave::{Mix, VoiceBuilder};
-use notes;
+extern crate mule_audio as ma;
+extern crate portaudio as pa;
 
-pub mod conc_trials;
-pub use self::conc_trials::*;
+fn main() {
+    println!("Simple voice trials!");
+    trial1().unwrap();
+    trial2().unwrap();
+}
+
+use ma::streamer::Streamer;
+use ma::wave::{Mix, VoiceBuilder};
+use ma::notes;
 
 pub fn trial1() -> Result<(), pa::Error> {
     let mut streamer = Streamer::new()?;
