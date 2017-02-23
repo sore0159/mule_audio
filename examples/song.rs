@@ -11,21 +11,23 @@ fn main() {
 
 pub fn song_voices() -> Vec<Voice> {
     use notes::*;
+    use ma::wave::Shape;
     let song = [E4, D4, C4, D4, E4, E4, E4, D4, D4, D4, E4, G4, G4, E4, D4, C4, D4, E4, E4, E4,
                 E4, D4, D4, E4, D4, C4];
     let vol: f64 = 0.45;
-    let note_dur: f64 = 0.850;
+    let note_dur: f64 = 0.50;
     let silence_dur: f64 = note_dur * 0.85;
     let grow_dur = 0.1;
     let fade_dur = 0.1;
     let play_note = |mut v: VoiceBuilder, n: f64| if n < 0.0 {
         v.silence(silence_dur - n)
     } else {
-        v.cur_fq = n;
-        v.linear_amp(grow_dur, vol)
+        v = v.silence(silence_dur);
+        v.next_noise(Shape::Sine, n);
+        v.linear_amp(0.75 * grow_dur, 1.5 * vol)
+            .linear_amp(0.25 * grow_dur, vol)
             .hold(note_dur - grow_dur - fade_dur)
             .fade(fade_dur)
-            .silence(silence_dur)
     };
 
     let mut v1 = VoiceBuilder::sine(song[0]);
@@ -41,7 +43,7 @@ pub fn song_voices() -> Vec<Voice> {
                 v1 = v1.silence(silence_dur * 0.5);
                 v2 = v2.silence(silence_dur * 0.5);
             }
-            9 | 19 => {
+            9 | 19 | 26 => {
                 v1 = v1.silence(silence_dur * 0.25);
                 v2 = v2.silence(silence_dur * 0.25);
             }

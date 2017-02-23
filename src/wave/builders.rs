@@ -37,6 +37,7 @@ impl VoiceBuilder {
         }
         self.cur_shape = shape;
         self.cur_noise = Noise::new(shape, fq);
+        self.cur_fq = fq;
     }
     pub fn sine(fq: f64) -> Self {
         VoiceBuilder::new(Shape::Sine, fq)

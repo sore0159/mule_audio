@@ -176,6 +176,7 @@ pub enum Shape {
 }
 impl Shape {
     pub fn val(&self, amp: Amp, fq: Frequency, time: Time) -> f32 {
+        //println!("USING AMP {}, FQ {}", amp, fq);
         match self {
             &Shape::Sine => (amp * (time * fq * TAU).sin()) as f32,
             &Shape::Saw => (2.0 * amp * ((0.5 + time) * fq).fract() - 1.0) as f32,
