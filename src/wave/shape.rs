@@ -36,6 +36,11 @@ impl Waver {
         }
         self.behavior = Behavior::Noise(new_noise);
     }
+    pub fn scale_amp(&mut self, s: f64) {
+        if let Behavior::Noise(ref mut n) = self.behavior {
+            n.scale_amp(s);
+        }
+    }
 }
 
 impl Wave for Waver {
@@ -141,6 +146,11 @@ impl Noise {
             None
         }
 
+    }
+    fn scale_amp(&mut self, s: f64) {
+        for stat in &mut self.stats {
+            stat.0 *= s;
+        }
     }
 }
 

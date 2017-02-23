@@ -3,8 +3,8 @@ use wave::{Wave, Time};
 
 #[derive(Clone)]
 pub struct Voice {
-    current: usize,
-    data: Vec<Waver>,
+    pub current: usize,
+    pub data: Vec<Waver>,
 }
 
 impl Voice {
@@ -13,6 +13,11 @@ impl Voice {
             w.swap(t, new_noise)
         }
         self.data.truncate(self.current + 1)
+    }
+    pub fn scale_amp(&mut self, s: f64) {
+        for w in &mut self.data {
+            w.scale_amp(s)
+        }
     }
 }
 impl From<Vec<Waver>> for Voice {
