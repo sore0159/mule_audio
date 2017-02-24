@@ -15,7 +15,7 @@ pub fn song_voices() -> Vec<Voice> {
     let song = [E4, D4, C4, D4, E4, E4, E4, D4, D4, D4, E4, G4, G4, E4, D4, C4, D4, E4, E4, E4,
                 E4, D4, D4, E4, D4, C4];
     let vol: f64 = 0.45;
-    let note_dur: f64 = 0.50;
+    let note_dur: f64 = 0.66;
     let silence_dur: f64 = note_dur * 0.85;
     let grow_dur = 0.1;
     let fade_dur = 0.1;
@@ -25,7 +25,8 @@ pub fn song_voices() -> Vec<Voice> {
         v = v.silence(silence_dur);
         v.next_noise(Shape::Sine, n);
         v.linear_amp(0.75 * grow_dur, 1.5 * vol)
-            .linear_amp(0.25 * grow_dur, vol)
+        .linear_amp(0.25 * grow_dur, vol)
+        //.linear_amp(grow_dur, vol)
             .hold(note_dur - grow_dur - fade_dur)
             .fade(fade_dur)
     };
@@ -39,11 +40,11 @@ pub fn song_voices() -> Vec<Voice> {
             v2 = play_note(v2, *n);
         }
         match i {
-            6 | 12 => {
-                v1 = v1.silence(silence_dur * 0.5);
-                v2 = v2.silence(silence_dur * 0.5);
+            6 | 9 | 12 => {
+                v1 = v1.silence(silence_dur * 1.0);
+                v2 = v2.silence(silence_dur * 1.0);
             }
-            9 | 19 | 26 => {
+            19 | 26 => {
                 v1 = v1.silence(silence_dur * 0.25);
                 v2 = v2.silence(silence_dur * 0.25);
             }

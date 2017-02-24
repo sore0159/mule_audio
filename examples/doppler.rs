@@ -8,6 +8,7 @@ fn main() {
     println!("Simple doppler trials!");
     play_voices(doppler_voices()).unwrap();
     play_voices(multi_doppler_voices()).unwrap();
+    play_voices(drop_voices()).unwrap();
 }
 
 // Also doesn't sound quite right...
@@ -15,9 +16,13 @@ pub fn doppler_voices() -> Vec<Voice> {
     let v1 = VoiceBuilder::sine(notes::CS3)
         .linear_amp(0.1, 0.5)
         .linear_fq(3.0, notes::C3)
+        .hold(0.1)
         .linear_fq(3.0, notes::CS3)
+        .hold(0.1)
         .linear_fq(3.0, notes::C3)
+        .hold(0.1)
         .linear_fq(3.0, notes::CS3)
+        .hold(0.1)
         .linear_fq(3.0, notes::C3)
         .fade(0.1);
     let v: Voice = v1.into();
@@ -38,11 +43,24 @@ pub fn multi_doppler_voices() -> Vec<Voice> {
         .into_iter()
         .enumerate() {
         let v1 = VoiceBuilder::sine(*n)
-            .silence(i as f64 * 0.75)
+            .silence(i as f64 * 1.25)
             .linear_amp(0.1, 1.0)
             .hold(3.0)
             .fade(0.1);
         voices.push(v1.into());
     }
+    voices
+}
+
+pub fn drop_voices() -> Vec<Voice> {
+    let mut voices: Vec<Voice> = vec![];
+    let mut v1 = VoiceBuilder::sine(notes::A3).linear_amp(0.1, 0.5);
+    for n in [notes::A3, notes::GS3, notes::G3, notes::FS3, notes::F3, notes::E3, notes::DS3,
+              notes::D3, notes::CS3, notes::C3]
+        .into_iter() {
+        v1 = v1.linear_fq(3.0, *n);
+    }
+    v1 = v1.fade(0.1);
+    voices.push(v1.into());
     voices
 }
