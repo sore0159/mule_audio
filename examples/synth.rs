@@ -73,12 +73,21 @@ fn main() {
             Key::Char('n') => {
                 play_note(shape, notes::GS4);
             }
-            Key::Char(' ') => {
-                if shape == Shape::Sine {
-                    shape = Shape::Square;
-                } else {
-                    shape = Shape::Sine;
-                }
+            Key::Char('\'') => {
+                shape = Shape::Sine;
+                println!("Sine wave!");
+            }
+            Key::Char(',') => {
+                shape = Shape::Square;
+                println!("Square wave!");
+            }
+            Key::Char('.') => {
+                shape = Shape::Triangle;
+                println!("Triangle wave!");
+            }
+            Key::Char('p') => {
+                shape = Shape::Saw;
+                println!("Saw wave!");
             }
 
             Key::Char(c) => println!("{}", c),

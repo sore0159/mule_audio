@@ -99,6 +99,9 @@ impl Noise {
     pub fn saw(fq: f64) -> Self {
         Noise::new(Shape::Saw, fq)
     }
+    pub fn triangle(fq: f64) -> Self {
+        Noise::new(Shape::Triangle, fq)
+    }
     pub fn push_stats(&mut self, amp: f64, fq: f64, dur: f64) {
         self.stats.push((amp, fq, dur));
     }
@@ -160,6 +163,7 @@ impl Wave for Noise {
             match self.shape {
                 x @ Shape::Sine => Some(x.val(amp, fq, dt)),
                 x @ Shape::Square => Some(x.val(amp, fq, dt)),
+                x @ Shape::Triangle => Some(x.val(amp, fq, dt)),
                 x @ Shape::Saw => Some(x.val(amp, fq, dt)),
             }
         } else {
@@ -173,13 +177,24 @@ pub enum Shape {
     Sine,
     Saw,
     Square,
+    Triangle,
 }
 impl Shape {
     pub fn val(&self, amp: Amp, fq: Frequency, time: Time) -> f32 {
         //println!("USING AMP {}, FQ {}", amp, fq);
         match self {
             &Shape::Sine => (amp * (time * fq * TAU).sin()) as f32,
-            &Shape::Saw => (2.0 * amp * ((0.5 + time) * fq).fract() - 1.0) as f32,
+            &Shape::Saw => (amp * 2.0 * ((time * fq) - (time * fq + 0.5).floor())) as f32,
+            &Shape::Triangle => {
+                let f = (time * fq).fract() * 4.0;
+                if f < 1.0 {
+                    (amp * f) as f32
+                } else if f < 3.0 {
+                    (amp * (1.0 - f)) as f32
+                } else {
+                    (amp * (f - 4.0)) as f32
+                }
+            }
             &Shape::Square => {
                 if (time * fq).fract() < 0.5 {
                     amp as f32
@@ -187,6 +202,7 @@ impl Shape {
                     -1.0 * amp as f32
                 }
             }
+
         }
     }
 }
