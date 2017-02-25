@@ -15,14 +15,28 @@ fn main() {
     let mut streamer = Streamer::new().unwrap();
     let (mix, v_send, _mod_send, done_send) = SafeMix::new(15);
     let mut shape: Shape = Shape::Sine;
+    use std::sync::{Arc, RwLock};
+    let pitch_scale = Arc::new(RwLock::new(1.0));
+    let double = Arc::new(RwLock::new(false));
     let play_note = |shape: Shape, note: f64| {
         let v1: Voice = VoiceBuilder::new(shape, note)
             .linear_amp(0.05, 0.5)
             .linear_amp(0.05, 0.25)
-            .hold(0.2)
+            //.hold(0.2)
+            .linear_fq(0.2, note * *pitch_scale.read().unwrap())
             .fade(0.05)
             .into();
+        let v2: Voice = VoiceBuilder::new(Shape::Saw, note)
+            .linear_amp(0.05, 0.25)
+            .linear_amp(0.05, 0.125)
+            .linear_fq(0.2, note * *pitch_scale.read().unwrap())
+            .fade(0.05)
+            .into();
+
         v_send.send(v1.into()).unwrap();
+        if *double.read().unwrap() {
+            v_send.send(v2.into()).unwrap();
+        }
     };
     streamer.set_stream(mix).unwrap();
     streamer.start().unwrap();
@@ -88,6 +102,27 @@ fn main() {
             Key::Char('p') => {
                 shape = Shape::Saw;
                 println!("Saw wave!");
+            }
+            Key::Char('l') => {
+                *pitch_scale.write().unwrap() = 1.1;
+                println!("Pitch rise!");
+            }
+            Key::Char('r') => {
+                *pitch_scale.write().unwrap() = 1.0;
+                println!("Pitch even!");
+            }
+            Key::Char('c') => {
+                *pitch_scale.write().unwrap() = 0.9;
+                println!("Pitch drop!");
+            }
+            Key::Char('s') => {
+                let d = *double.read().unwrap();
+                if d {
+                    println!("Double off!");
+                } else {
+                    println!("Double on!");
+                }
+                *double.write().unwrap() = !d;
             }
 
             Key::Char(c) => println!("{}", c),
